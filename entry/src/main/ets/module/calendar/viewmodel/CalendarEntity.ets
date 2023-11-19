@@ -163,6 +163,18 @@ export class CalendarDateViewModel {
     return this._isDuration
   }
 
+  public isOnlyDuration() {
+    return this._isDuration && !this._isStart && !this._isEnd
+  }
+
+  public isStartDuration() {
+    return this._isDuration && this._isStart
+  }
+
+  public isEndDuration() {
+    return this._isDuration && this._isEnd
+  }
+
   public get isAvailable() {
     return this._isAvailable
   }

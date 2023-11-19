@@ -21,13 +21,13 @@ export struct CalendarScroll {
   private calendarVm: CalendarViewModel
 
   aboutToAppear() {
-    setTimeout(() => {
-      let dateList: Array<CalendarMonthEntity> = CalendarUtil.createRangeDate()
-      this.calendarVm = new CalendarViewModel(dateList)
-      this.lazyMonthList.pushDataList(dateList)
-      // this.lazyMonthList.pushData(dateList[0])
-    }, 1000)
+    this.fetchData()
+  }
 
+  fetchData() {
+    let dateList: Array<CalendarMonthEntity> = CalendarUtil.createRangeDate()
+    this.calendarVm = new CalendarViewModel(dateList)
+    this.lazyMonthList.pushDataList(dateList)
   }
 
   build() {
@@ -85,22 +85,51 @@ struct CalendarDate {
 
   build() {
     Column() {
-      Text(`${this.dateEntity.showText()}`)
-        .fontSize(16)
-        .padding({
-          top: 10,
-          bottom: 10
-        })
-        .width("100%")
-        .textAlign(TextAlign.Center)
-      Text(`${this.dateEntity.getBottomDesc()}`)
+      Stack() {
+        if (this.dateEntity.isEndDuration() || this.dateEntity.isStartDuration()){
+          Row(){
+            Stack().width("50%")
+              .height("100%")
+              .backgroundColor( this.dateEntity.isEndDuration()? 0xFFF1EAFF : Color.Transparent)
+            Stack().width("50%")
+              .height("100%")
+              .backgroundColor( this.dateEntity.isStartDuration()? 0xFFF1EAFF : Color.Transparent)
+          }
+          .width('100%')
+          .aspectRatio(2)
+          .visibility(this.dateEntity.isEndDuration() && this.dateEntity.isStartDuration() ? Visibility.None : Visibility.Visible)
+        }
+        Button({ type: ButtonType.Circle })
+          .backgroundColor(0xFFF1EAFF)
+          .width('50%')
+          .height('100%')
+          .visibility(this.getBottomDesc() ? Visibility.Visible : Visibility.Hidden)
+        Text(`${this.dateEntity.showText()}`)
+          .fontSize(16)
+          /*.padding({
+            top: 10,
+            bottom: 10
+          })*/
+          .width("100%")
+          .textAlign(TextAlign.Center)
+      }
+      .backgroundColor(this.dateEntity.isOnlyDuration() ? 0xFFF1EAFF : Color.Transparent)
+
+      Text(`${this.getBottomDesc()}`)
         .maxLines(1)
         .fontSize(14)
         .width("100%")
         .textAlign(TextAlign.Center)
-        .visibility(this.dateEntity.getBottomDesc() ? Visibility.Visible : Visibility.Hidden)
+        .visibility(this.getBottomDesc() ? Visibility.Visible : Visibility.Hidden)
     }
     .alignItems(HorizontalAlign.Center)
-    .backgroundColor(this.dateEntity.isDuration ? 0xFFC683D7 : 0x33333333)
+  }
+
+  isStartEnd() {
+    return this.dateEntity.isStartDuration() || this.dateEntity.isEndDuration()
+  }
+
+  getBottomDesc() {
+    return this.dateEntity.getBottomDesc()
   }
 }
