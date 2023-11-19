@@ -1,0 +1,7 @@
+{
+  "src": [
+    "pages/CategoryPage",
+    "pages/DemoPage",
+    "module/calendar/CalendarPage"
+  ]
+}
