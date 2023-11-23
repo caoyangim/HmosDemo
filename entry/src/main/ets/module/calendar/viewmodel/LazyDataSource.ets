@@ -80,7 +80,7 @@ export class LazyDataSource<T> extends BasicDataSource {
     this.notifyDataAdd(this.dataArray.length - 1);
   }
 
-  public pushDataList(data: T[]): void {
+  public setNewData(data: T[]): void {
     this.dataArray.splice(0);
     data.forEach((i: T) => {
       this.dataArray.push(i)

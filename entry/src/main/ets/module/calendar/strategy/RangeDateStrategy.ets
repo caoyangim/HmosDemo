@@ -1,3 +1,4 @@
+import { CalendarUtil } from '../helper/CalendarUtil';
 import { CalendarDateViewModel } from '../viewmodel/CalendarEntity';
 import { BaseCalendarStrategy } from './ICalendarStrategy';
 
@@ -5,16 +6,22 @@ export class RangeDateStrategy extends BaseCalendarStrategy {
   private _chooseStartDate: CalendarDateViewModel
   private _chooseEndDate: CalendarDateViewModel
 
+  createCalendarData() {
+    return CalendarUtil.createRangeDate("RangeDateStrategy")
+  }
+
   choose(date: CalendarDateViewModel) {
     if (this._chooseStartDate == null) {
       this._chooseStartDate = date
       date.choose(true)
+      this.onSelected(date.timeStamp, 0)
       return
     }
     if (this._chooseEndDate == null && this._chooseStartDate.timeStamp <= date.timeStamp) {
       this._chooseEndDate = date
       date.choose(false)
       this.onRanged()
+      this.onSelected(this._chooseStartDate.timeStamp, this._chooseEndDate.timeStamp)
       return
     }
     this._dateList.forEach(dateEntity => {
@@ -23,6 +30,7 @@ export class RangeDateStrategy extends BaseCalendarStrategy {
     this._chooseStartDate = date
     this._chooseEndDate = null
     date.choose(true)
+    this.onSelected(date.timeStamp, 0)
   }
 
   /**

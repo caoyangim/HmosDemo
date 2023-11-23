@@ -1,13 +1,22 @@
 import { ObservableArray } from './LazyDataSource'
 
+const ONE_DAY_STAMP = 24 * 60 * 60 * 1000
+
 @Observed
 export class CalendarMonthEntity {
-  private _title
+  private _title: string
+
   constructor(
-     _title: string,
+    private _type: string,
+    private _year: number,
+    private _month: number,
     private _dateList: ObservableArray<CalendarDateViewModel>
   ) {
-    this._title = _title+Date.parse(new Date().toString()) + Math.random()
+    this._title = `${_year}年${_month + 1}月`
+  }
+
+  public get type() {
+    return this._type
   }
 
   public get title() {
@@ -30,6 +39,14 @@ export class CalendarMonthEntity {
     let firstDayOfMonth: CalendarDateViewModel = dateList[0]
     return firstDayOfMonth.day
   }
+
+  public get year() {
+    return this._year
+  }
+
+  public get month() {
+    return this._month
+  }
 }
 
 @Observed
@@ -43,11 +60,13 @@ export class CalendarDateViewModel {
   private _isAvailable: boolean = true
   private _timeStamp: number
   private _day: number
+  private _isLastDayMonth = false
 
   constructor(
     private _year: number,
     private _month: number,
     private _date: number,
+    private _type: string,
   ) {
     this.isToday = this.calculateIsToday(_year, _month, _date)
     this._isAvailable = true
@@ -56,6 +75,7 @@ export class CalendarDateViewModel {
     this._day = date.getDay()
     this.locationX = 0
     this.locationY = 0
+    this._isLastDayMonth = new Date(this._timeStamp + ONE_DAY_STAMP).getDate() == 1
   }
 
   calculateIsToday(year: number, month: number, date: number) {
@@ -82,15 +102,22 @@ export class CalendarDateViewModel {
     return this._timeStamp
   }
 
+  private _bottomDesc?: string
+
+  public setBottomDesc(text: string) {
+    this._bottomDesc = text
+  }
+
   public getBottomDesc(): string {
+    let bottomDesc = this._bottomDesc
     if (this._isStart) {
       if (this._isEnd) {
-        return "取/还车"
+        return bottomDesc ? bottomDesc : "取/还车"
       }
-      return "取车"
+      return bottomDesc ? bottomDesc : "取车"
     }
     if (this._isEnd) {
-      return "还车"
+      return bottomDesc ? bottomDesc : "还车"
     }
     return null
   }
@@ -118,7 +145,11 @@ export class CalendarDateViewModel {
   }
 
   public isOnlyDuration() {
-    return this._isDuration && !this._isStart && !this._isEnd
+    return this._isDuration && !this.isSpecial()
+  }
+
+  public isSpecial() {
+    return this._isStart || this._isEnd || this.isSunday() || this.isSaturday() || this._isLastDayMonth || this.isFirstDayOfMonth()
   }
 
   public isStartDuration() {
@@ -143,5 +174,21 @@ export class CalendarDateViewModel {
 
   public get isEnd() {
     return this._isEnd
+  }
+
+  public isSunday() {
+    return this._day == 0
+  }
+
+  public isSaturday() {
+    return this._day == 6
+  }
+
+  public isFirstDayOfMonth() {
+    return this._date == 1
+  }
+
+  public isLastDayOfMonth() {
+    return this._isLastDayMonth
   }
 }

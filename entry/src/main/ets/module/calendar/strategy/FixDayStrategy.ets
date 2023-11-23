@@ -2,6 +2,7 @@ import { CalendarDateViewModel } from '../viewmodel/CalendarEntity';
 import { BaseCalendarStrategy } from './ICalendarStrategy';
 import LinkedList from '@ohos.util.LinkedList';
 import { RangeDateStrategy } from './RangeDateStrategy';
+import { CalendarUtil } from '../helper/CalendarUtil';
 
 /**
  * 固定租期
@@ -11,6 +12,11 @@ export class FixDayStrategy extends BaseCalendarStrategy {
 
   constructor(private _fixDay: number) {
     super()
+  }
+
+  createCalendarData() {
+    // Math.random() 防止type重复，列表不刷新
+    return CalendarUtil.createRangeDate("FixDayStrategy" + Math.random())
   }
 
   choose(date: CalendarDateViewModel) {
@@ -46,21 +52,25 @@ export class FixDayStrategy extends BaseCalendarStrategy {
     if (start < 0 || end >= dateList.length) {
       return
     }
+    let startItem: CalendarDateViewModel, endItem: CalendarDateViewModel
     let index = start
     while (index <= end) {
       let dateItem: CalendarDateViewModel = dateList[index]
       if (index == start) {
+        startItem = dateItem
         dateItem.choose(true)
         console.log(`选择的开始日期：${dateItem.showText()}`)
       }
       dateItem.duration = true
       if (index == end) {
+        endItem = dateItem
         dateItem.choose(false)
         console.log(`选择的结束日期：${dateItem.showText()}`)
       }
       index++
     }
     this._preStartIndex = start
+    this.onSelected(startItem.timeStamp, endItem.timeStamp)
   }
 
   reset() {

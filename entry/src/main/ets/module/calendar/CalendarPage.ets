@@ -1,24 +1,36 @@
 import { CalendarDateViewModel, CalendarMonthEntity } from './viewmodel/CalendarEntity'
-import { LazyDataSource, ObservableArray } from './viewmodel/LazyDataSource'
+import { LazyDataSource } from './viewmodel/LazyDataSource'
 import promptAction from '@ohos.promptAction'
 import { RangeDateStrategy } from './strategy/RangeDateStrategy'
 import { DayPickerStrategy } from './strategy/DayPickerStrategy'
 import { BaseCalendarStrategy } from './strategy/ICalendarStrategy'
 import { FixDayStrategy } from './strategy/FixDayStrategy'
+import { DateReshowWidget } from './component/DateReshowWidget'
+import { TakeReturnTimeChooseWidget, TakeReturnTimeViewModel } from './component/TakeReturTimeChooseWidget'
+import { ExtendStrategy } from './strategy/ExtendStrategy'
 
 @Component
 @Entry
 struct CalendarPage {
   @State weekDays: string[] = ["日", "一", "二", "三", "四", "五", "六"]
-  private strategyList = [new RangeDateStrategy(), new DayPickerStrategy(), new FixDayStrategy(3)]
+  private strategyList = [new RangeDateStrategy(), new DayPickerStrategy(), new FixDayStrategy(0), new FixDayStrategy(2)
+    , new ExtendStrategy(new Date().getTime(), new Date().getTime() + 36 * 60 * 60 * 1000)]
   private currentStrategy: BaseCalendarStrategy = this.strategyList[0]
-  @State readonly monthList: CalendarMonthEntity[] = []
+  @State private monthList: CalendarMonthEntity[] = []
+  @State private startTimeStamp: number = 0
+  @State private endTimeStamp: number = 0
+  private startDateStamp: number = 0
+  private endDateStamp: number = 0
+  @State @Watch("hourChanged")
+  private startHourStamp: number = 0
+  @State @Watch("hourChanged")
+  private endHourStamp: number = 0
+  @State private takeReturnTimeVm: TakeReturnTimeViewModel = new TakeReturnTimeViewModel()
 
   aboutToAppear() {
     this.changePosition(0)
   }
 
-  i=0
   changePosition(selectPos: number) {
     if (this.currentStrategy != null) {
       console.log(`清空之前模式：${this.currentStrategy.constructor.name}`);
@@ -29,11 +41,37 @@ struct CalendarPage {
       return
     }
     this.currentStrategy = this.strategyList[selectPos]
+    this.currentStrategy.setOnSelectedEvent((startTime, endTime) => {
+      this.startDateStamp = startTime
+      this.endDateStamp = endTime
+      this.startTimeStamp = startTime > 0 ? startTime + this.startHourStamp : 0
+      this.endTimeStamp = endTime > 0 ? endTime + this.endHourStamp : 0
+    })
     promptAction.showToast({ message: `当前模式：${this.currentStrategy.constructor.name}` })
-    this.logDateData()
-    this.monthList.splice(0)
-    this.i++
-    this.monthList.push(this.currentStrategy.getMonthList()[this.i])
+    // this.logDateData()
+    while (this.monthList.length != 0) {
+      this.monthList.pop()
+    }
+    this.monthList.push(...this.currentStrategy.getMonthList())
+    this.changeTimeViewModel()
+  }
+
+  changeTimeViewModel() {
+    let timeVm = this.takeReturnTimeVm
+    let fixStartTime = this.currentStrategy instanceof ExtendStrategy
+    timeVm.fixStartTime = fixStartTime
+    if (fixStartTime) {
+      promptAction.showToast({ message: "当前是续租模式，将固定开始时间。" })
+    }
+    let startTimeLimit = this.currentStrategy.getStartTimeLimit()
+    timeVm.startTimeMin = startTimeLimit.minLimit
+    timeVm.startTimeMax = startTimeLimit.maxLimit
+    timeVm.startTimeInterval = startTimeLimit.interval
+
+    let endTimeLimit = this.currentStrategy.getEndTimeLimit()
+    timeVm.endTimeMin = endTimeLimit.minLimit
+    timeVm.endTimeMax = endTimeLimit.maxLimit
+    timeVm.endTimeInterval = endTimeLimit.interval
   }
 
   logDateData() {
@@ -44,10 +82,19 @@ struct CalendarPage {
     })
   }
 
+  hourChanged() {
+    let startDateStamp = this.startDateStamp
+    let endDateStamp = this.endDateStamp
+    this.startTimeStamp = startDateStamp > 0 ? startDateStamp + this.startHourStamp : 0
+    this.endTimeStamp = endDateStamp > 0 ? endDateStamp + this.endHourStamp : 0
+  }
+
   build() {
     Stack() {
       Column() {
         this.TopBanner()
+        DateReshowWidget({ startTimeStamp: this.startTimeStamp, endTimeStamp: this.endTimeStamp })
+          .padding({ left: 16, right: 16, top: 10, bottom: 10 })
         this.WeekDayView()
         CalendarScroll({ monthList: this.monthList, event: (dateItem) => {
           promptAction.showToast({ message: "time:" + dateItem.timeStamp })
@@ -56,7 +103,14 @@ struct CalendarPage {
           }
           console.log(`当前模式：${this.currentStrategy.constructor.name}`);
           this.currentStrategy.choose(dateItem)
-        } }).height(300)
+        } }).layoutWeight(1)
+        TakeReturnTimeChooseWidget({
+          startHourStamp: $startHourStamp,
+          endHourStamp: $endHourStamp,
+          takeReturnTimeVm: this.takeReturnTimeVm
+        })
+        Row() {
+        }.height(90)
       }.height("100%")
 
       this.ChooseType()
@@ -68,7 +122,7 @@ struct CalendarPage {
     Row() {
       Blank().layoutWeight(1)
       Text("清空")
-        .padding(10)
+        .padding({ left: 16, right: 16, top: 10, bottom: 5 })
         .onClick(() => {
           console.log(`当前模式：${this.currentStrategy.constructor.name}`);
           this.currentStrategy.reset()
@@ -82,10 +136,10 @@ struct CalendarPage {
     GridRow({ columns: 7 }) {
       ForEach(this.weekDays, day => {
         GridCol() {
-          Text(day)
+          Text(day).fontSize(12)
         }
       })
-    }
+    }.padding({ top: 5, bottom: 10 })
   }
 
   @Builder
@@ -104,15 +158,21 @@ struct CalendarPage {
         }
       },
       {
-        value: '选择固定天数模式',
+        value: '固定天数模式(1天)',
         action: () => {
           this.changePosition(2)
         }
       },
       {
-        value: '选择续租模式',
+        value: '固定天数模式(3天)',
         action: () => {
           this.changePosition(3)
+        }
+      },
+      {
+        value: '选择续租模式',
+        action: () => {
+          this.changePosition(4)
         }
       }
     ])
@@ -121,9 +181,16 @@ struct CalendarPage {
 
 @Component
 export struct CalendarScroll {
-  @Link private monthList: CalendarMonthEntity[]
+  @Link @Watch("onDataSourceChanged")
+  private monthList: CalendarMonthEntity[]
+  @State private readonly lazyList: LazyDataSource<CalendarMonthEntity> = new LazyDataSource(this.monthList)
   private scroller: Scroller = new Scroller()
   private event: (date: CalendarDateViewModel) => void = (e) => {
+  }
+
+  onDataSourceChanged() {
+    promptAction.showToast({ message: "日历列表数据源发生变化" })
+    this.lazyList.notifyDataReload()
   }
 
   build() {
@@ -131,13 +198,15 @@ export struct CalendarScroll {
       List({
         scroller: this.scroller
       }) {
-        LazyForEach(new LazyDataSource(this.monthList), (month: CalendarMonthEntity) => {
+        LazyForEach(this.lazyList, (month: CalendarMonthEntity) => {
           ListItem() {
             CalendarMonth({ monthEntity: month, event: dateItem => {
               this.event.call(this.event, dateItem)
-            } })
+            } }).backgroundColor(0xF9F9F8)
           }
-        },(item:CalendarMonthEntity)=>item.title)
+        }, (month: CalendarMonthEntity) => {
+          return month.type + month.title
+        })
       }
     }
   }
@@ -157,8 +226,8 @@ struct CalendarMonth {
 
   build() {
     Column() {
-      //Text(`单个日历控件刷新次数刷新次数：${this.i++},${JSON.stringify(this.monthEntity.dateList[0])}}`)
-      Text(this.monthEntity.title)
+      Text(this.monthEntity.title).alignSelf(ItemAlign.Start)
+        .padding({ left: 16, right: 16, top: 10, bottom: 10 })
       GridRow({ columns: 7 }) {
         ForEach(this.monthEntity.dateList, (dateItem: CalendarDateViewModel, index) => {
           GridCol({ offset: index == 0 ? this.monthEntity.getMonthStartOffset() : 0 }) {
@@ -183,21 +252,28 @@ struct CalendarDate {
   build() {
     Column() {
       Stack() {
-        if (this.dateEntity.isEndDuration() || this.dateEntity.isStartDuration()) {
+        if (this.dateEntity.isDuration) {
           Row() {
             Stack().width("50%")
               .height("100%")
-              .backgroundColor(this.dateEntity.isEndDuration() ? 0xFFCCEEEE : Color.Transparent)
+              .backgroundColor(!this.hideFirstHalfRow() ? this.getBackgroundColor() : Color.Transparent)
             Stack().width("50%")
               .height("100%")
-              .backgroundColor(this.dateEntity.isStartDuration() ? 0xFFCCEEEE : Color.Transparent)
+              .backgroundColor(!this.hideSecondHalfRow() ? this.getBackgroundColor() : Color.Transparent)
           }
           .width('100%')
           .aspectRatio(2)
           .visibility(this.dateEntity.isEndDuration() && this.dateEntity.isStartDuration() ? Visibility.None : Visibility.Visible)
         }
+        if (this.dateEntity.isDuration && (this.dateEntity.isSunday() || this.dateEntity.isLastDayOfMonth()
+        || this.dateEntity.isSaturday() || this.dateEntity.isFirstDayOfMonth())) {
+          Button({ type: ButtonType.Circle })
+            .backgroundColor(this.getBackgroundColor())
+            .width('50%')
+            .height('100%')
+        }
         Button({ type: ButtonType.Circle })
-          .backgroundColor(0x29B7B7)
+          .backgroundColor(!this.dateEntity.isAvailable ? 0xFF999999 : 0xFF29B7B7)
           .width('50%')
           .height('100%')
           .visibility(this.getBottomDesc() ? Visibility.Visible : Visibility.Hidden)
@@ -208,19 +284,31 @@ struct CalendarDate {
               bottom: 10
             })*/
           .width("100%")
-          .fontColor(this.dateEntity.isAvailable ? Color.Black : Color.Gray)
+          .fontColor(this.getTextColor())
           .textAlign(TextAlign.Center)
       }
-      .backgroundColor(this.dateEntity.isOnlyDuration() ? 0xFFCCEEEE : Color.Transparent)
+      .backgroundColor(this.dateEntity.isOnlyDuration() ? this.getBackgroundColor() : Color.Transparent)
 
       Text(`${this.getBottomDesc()}`)
         .maxLines(1)
-        .fontSize(14)
+        .fontSize(12)
         .width("100%")
         .textAlign(TextAlign.Center)
         .visibility(this.getBottomDesc() ? Visibility.Visible : Visibility.Hidden)
     }
     .alignItems(HorizontalAlign.Center)
+  }
+
+  getBackgroundColor() {
+    return this.dateEntity.isAvailable ? 0xFFCCEEEE : 0xFFEDEDED;
+  }
+
+  hideSecondHalfRow() {
+    return this.dateEntity.isEndDuration() || this.dateEntity.isSaturday() || this.dateEntity.isLastDayOfMonth()
+  }
+
+  hideFirstHalfRow() {
+    return this.dateEntity.isStartDuration() || this.dateEntity.isSunday() || this.dateEntity.isFirstDayOfMonth()
   }
 
   isStartEnd() {
@@ -229,5 +317,12 @@ struct CalendarDate {
 
   getBottomDesc() {
     return this.dateEntity.getBottomDesc()
+  }
+
+  getTextColor() {
+    if (this.dateEntity.isStart || this.dateEntity.isEnd) {
+      return Color.White
+    }
+    return this.dateEntity.isAvailable ? Color.Black : Color.Gray
   }
 }

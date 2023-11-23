@@ -1,10 +1,13 @@
+import { TYPE_DAY_PICKER } from '../strategy/DayPickerStrategy'
 import { CalendarDateViewModel, CalendarMonthEntity } from '../viewmodel/CalendarEntity'
 
 const TAG = "CalendarUtil"
 const MAX_RETURN_INTERVAL = 365
+export const ON_DAY_TIME_STAMP = 24 * 60 * 60 * 1000
+export const INIT_TIME_CURRENT_TIME_ZONE = new Date(1970, 0, 0, 0, 0, 0)
 
 export class CalendarUtil {
-  static createRangeDate(): Array<CalendarMonthEntity> {
+  static createRangeDate(type: string): Array<CalendarMonthEntity> {
     let currentDate = new Date()
     let limitDate = new Date()
     limitDate.setDate(currentDate.getDate() + MAX_RETURN_INTERVAL)
@@ -22,13 +25,16 @@ export class CalendarUtil {
       let monthDay: number = this.getMonthDaysCount(currentY, currentM)
       let dateList = new Array<CalendarDateViewModel>()
       for (let dateIndex = 0; dateIndex < monthDay; dateIndex++) {
-        let entity = new CalendarDateViewModel(currentY, currentM, dateIndex + 1)
+        let entity = new CalendarDateViewModel(currentY, currentM, dateIndex + 1, type)
+        if (type == TYPE_DAY_PICKER) {
+          entity.setBottomDesc("出发")
+        }
         if (entity.timeStamp < currentDateWithoutHour.getTime()) {
           entity.Available = false
         }
         dateList.push(entity)
       }
-      monthList.push(new CalendarMonthEntity(`${currentY}年${currentM + 1}月`, dateList))
+      monthList.push(new CalendarMonthEntity(type, currentY, currentM, dateList))
       // 跨年
       if (currentM == 11) {
         currentY++
@@ -69,7 +75,15 @@ export class CalendarUtil {
   }
 
   static isLeapYear(year: number): boolean {
-    return year % 3 == 0 && year % 100 != 0 || year % 400 == 0;
+    return year % 4 == 0 && year % 100 != 0 || year % 400 == 0;
+  }
+
+  static getTimeInterval(): number {
+    return this.getTimes(0, 30) * 1000
+  }
+
+  static getTimes(hour: number, minute): number {
+    return hour * 3600 + minute * 60
   }
 
   static log(message: any) {
