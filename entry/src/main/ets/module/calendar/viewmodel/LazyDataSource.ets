@@ -58,7 +58,9 @@ class BasicDataSource implements IDataSource {
 
 @Observed
 export class LazyDataSource<T> extends BasicDataSource {
-  private dataArray: ObservableArray<T> = new ObservableArray<T>();
+  constructor(private dataArray: ObservableArray<T>) {
+    super();
+  }
 
   public totalCount(): number {
     return this.dataArray.length;
@@ -78,8 +80,11 @@ export class LazyDataSource<T> extends BasicDataSource {
     this.notifyDataAdd(this.dataArray.length - 1);
   }
 
-  public pushDataList(data: ObservableArray<T>): void {
-    this.dataArray = data;
+  public pushDataList(data: T[]): void {
+    this.dataArray.splice(0);
+    data.forEach((i: T) => {
+      this.dataArray.push(i)
+    })
     this.notifyDataReload();
   }
 }

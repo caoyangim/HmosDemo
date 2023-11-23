@@ -1,4 +1,4 @@
-import {  CalendarDateViewModel, CalendarMonthEntity } from '../viewmodel/CalendarEntity'
+import { CalendarDateViewModel, CalendarMonthEntity } from '../viewmodel/CalendarEntity'
 
 const TAG = "CalendarUtil"
 const MAX_RETURN_INTERVAL = 365
@@ -17,11 +17,15 @@ export class CalendarUtil {
     }
     let currentY = currentDate.getFullYear()
     let currentM = currentDate.getMonth()
+    let currentDateWithoutHour = new Date(currentY, currentM, currentDate.getDate())
     while (spaceMonth >= 0) {
       let monthDay: number = this.getMonthDaysCount(currentY, currentM)
       let dateList = new Array<CalendarDateViewModel>()
       for (let dateIndex = 0; dateIndex < monthDay; dateIndex++) {
         let entity = new CalendarDateViewModel(currentY, currentM, dateIndex + 1)
+        if (entity.timeStamp < currentDateWithoutHour.getTime()) {
+          entity.Available = false
+        }
         dateList.push(entity)
       }
       monthList.push(new CalendarMonthEntity(`${currentY}年${currentM + 1}月`, dateList))

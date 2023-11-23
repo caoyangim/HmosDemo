@@ -1,4 +1,4 @@
-import { LazyDataSource } from '../module/calendar/viewmodel/LazyDataSource'
+import { LazyDataSource, ObservableArray } from '../module/calendar/viewmodel/LazyDataSource'
 
 @Observed
 class Person {
@@ -43,20 +43,24 @@ struct PersonView {
 @Entry
 @Component
 struct ParentComponent {
-  @State _personList: LazyDataSource<Person> = new LazyDataSource();
+  @State _personList: ObservableArray<Person> = []
 
   aboutToAppear() {
-    this._personList.pushData(new Person("Tom", 12))
-    this._personList.pushData(new Person("Jerry", 14))
+    this._personList.push(new Person("Tom", 12))
+    this._personList.push(new Person("Jerry", 14))
   }
 
   build() {
     Column() {
-      LazyForEach(this._personList, (personItem: Person, index) => {
+      LazyForEach(new LazyDataSource(this._personList), (personItem: Person, index) => {
         PersonView({ person: personItem })
       })
       Button("外部控件age add").onClick(() => {
-        this._personList.getData(0).ageAdd()
+        this._personList[0].ageAdd()
+      })
+
+      Button("改变PersonList").onClick(() => {
+        this._personList.push(new Person("son", 4))
       })
     }
 

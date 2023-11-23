@@ -1,74 +1,13 @@
 import { ObservableArray } from './LazyDataSource'
-import LinkedList from '@ohos.util.LinkedList'
-
-export class CalendarViewModel {
-  private _chooseStartDate: CalendarDateViewModel
-  private _chooseEndDate: CalendarDateViewModel
-  private _dateList: LinkedList<CalendarDateViewModel>
-
-  constructor(private _monthList: Array<CalendarMonthEntity>) {
-    this._dateList = new LinkedList()
-    _monthList.forEach(monthEntity => {
-      monthEntity.dateList.forEach(dateEntity => {
-        this._dateList.add(dateEntity)
-      })
-    })
-  }
-
-  public choose(date: CalendarDateViewModel) {
-    if (this._chooseStartDate == null) {
-      this._chooseStartDate = date
-      date.choose(true)
-      return
-    }
-    if (this._chooseEndDate == null && this._chooseStartDate.timeStamp <= date.timeStamp) {
-      this._chooseEndDate = date
-      date.choose(false)
-      this.onRanged()
-      return
-    }
-    this._dateList.forEach(dateEntity => {
-      dateEntity.reset()
-    })
-    this._chooseStartDate = date
-    this._chooseEndDate = null
-    date.choose(true)
-  }
-
-  /**
-   * 范围选定
-   */
-  private onRanged() {
-    let chooseStartDate = this._chooseStartDate
-    let chooseEndDate = this._chooseEndDate
-    let dateList = this._dateList
-    if (chooseStartDate == null) {
-      return
-    }
-    let hasChooseStart = false
-    let hasChooseEnd = false
-    dateList.forEach(dateEntity => {
-      if (chooseStartDate == dateEntity) {
-        console.log(`选择的开始日期：${dateEntity.showText()}`)
-        hasChooseStart = true
-      }
-      if (hasChooseStart && !hasChooseEnd) {
-        dateEntity.duration = true
-      }
-      if (chooseEndDate == dateEntity) {
-        console.log(`选择的结束日期：${dateEntity.showText()}`)
-        hasChooseEnd = true
-      }
-    })
-  }
-}
 
 @Observed
 export class CalendarMonthEntity {
+  private _title
   constructor(
-    private _title: string,
+     _title: string,
     private _dateList: ObservableArray<CalendarDateViewModel>
   ) {
+    this._title = _title+Date.parse(new Date().toString()) + Math.random()
   }
 
   public get title() {
@@ -82,6 +21,15 @@ export class CalendarMonthEntity {
   public daySize() {
     return this._dateList.length
   }
+
+  public getMonthStartOffset(): number {
+    let dateList = this._dateList
+    if (dateList == null || dateList.length == 0) {
+      return -1
+    }
+    let firstDayOfMonth: CalendarDateViewModel = dateList[0]
+    return firstDayOfMonth.day
+  }
 }
 
 @Observed
@@ -94,6 +42,7 @@ export class CalendarDateViewModel {
   private locationY: number
   private _isAvailable: boolean = true
   private _timeStamp: number
+  private _day: number
 
   constructor(
     private _year: number,
@@ -102,7 +51,9 @@ export class CalendarDateViewModel {
   ) {
     this.isToday = this.calculateIsToday(_year, _month, _date)
     this._isAvailable = true
-    this._timeStamp = new Date(_year, _month, _date).getTime()
+    let date = new Date(_year, _month, _date)
+    this._timeStamp = date.getTime()
+    this._day = date.getDay()
     this.locationX = 0
     this.locationY = 0
   }
@@ -110,6 +61,10 @@ export class CalendarDateViewModel {
   calculateIsToday(year: number, month: number, date: number) {
     let todayDate = new Date()
     return year == todayDate.getFullYear() && month == todayDate.getMonth() && date == todayDate.getDate()
+  }
+
+  public get day() {
+    return this._day
   }
 
   public get date() {
@@ -143,7 +98,6 @@ export class CalendarDateViewModel {
   public choose(start: boolean) {
     if (start) {
       this._isStart = true
-
       return
     }
     this._isEnd = true
@@ -177,5 +131,17 @@ export class CalendarDateViewModel {
 
   public get isAvailable() {
     return this._isAvailable
+  }
+
+  public set Available(available: boolean) {
+    this._isAvailable = available
+  }
+
+  public get isStart() {
+    return this._isStart
+  }
+
+  public get isEnd() {
+    return this._isEnd
   }
 }
