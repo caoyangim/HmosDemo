@@ -3,17 +3,16 @@ import { CalendarDateViewModel, CalendarMonthEntity } from '../viewmodel/Calenda
 
 const TAG = "CalendarUtil"
 const MAX_RETURN_INTERVAL = 365
-export const ON_DAY_TIME_STAMP = 24 * 60 * 60 * 1000
-export const INIT_TIME_CURRENT_TIME_ZONE = new Date(1970, 0, 0, 0, 0, 0)
+
+const INIT_TIME_CURRENT_TIME_ZONE = new Date(1970, 0, 0, 0, 0, 0)
 
 export class CalendarUtil {
   static createRangeDate(type: string): Array<CalendarMonthEntity> {
     let currentDate = new Date()
     let limitDate = new Date()
     limitDate.setDate(currentDate.getDate() + MAX_RETURN_INTERVAL)
-    this.log(`最长选择时间${limitDate}`)
+    // this.log(`最长选择时间${limitDate}`)
     var spaceMonth: number = this.spaceMonth(currentDate, limitDate)
-    this.log(`间隔月份：${spaceMonth}`)
     let monthList = new Array<CalendarMonthEntity>()
     if (spaceMonth < 0) {
       return monthList
@@ -84,6 +83,10 @@ export class CalendarUtil {
 
   static getTimes(hour: number, minute): number {
     return hour * 3600 + minute * 60
+  }
+
+  static getDateFromTime(timeStamp: number): Date {
+    return new Date(INIT_TIME_CURRENT_TIME_ZONE.getTime() + timeStamp)
   }
 
   static log(message: any) {

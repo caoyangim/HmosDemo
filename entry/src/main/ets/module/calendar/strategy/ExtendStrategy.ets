@@ -1,4 +1,4 @@
-import { CalendarUtil, ON_DAY_TIME_STAMP } from '../helper/CalendarUtil';
+import { CalendarUtil } from '../helper/CalendarUtil';
 import { CalendarMonthEntity, CalendarDateViewModel } from '../viewmodel/CalendarEntity';
 import { BaseCalendarStrategy, TimeLimit } from './ICalendarStrategy';
 import promptAction from '@ohos.promptAction';
@@ -10,7 +10,7 @@ export class ExtendStrategy extends BaseCalendarStrategy {
   private _chooseStartDate: CalendarDateViewModel
   private _chooseEndDate: CalendarDateViewModel
 
-  constructor(private _orderStartTimeStamp: number, private  _orderEndTimeStamp: number) {
+  constructor(private _orderStartTimeStamp: number, private _orderEndTimeStamp: number) {
     super()
     this.limitDate()
   }
@@ -50,7 +50,7 @@ export class ExtendStrategy extends BaseCalendarStrategy {
   }
 
   choose(date: CalendarDateViewModel) {
-    if (!date.isAvailable || date.timeStamp < this._orderEndTimeStamp) {
+    if (!date.isAvailable) {
       promptAction.showToast({ message: "当前时间不可选" })
       return
     }
@@ -114,19 +114,41 @@ export class ExtendStrategy extends BaseCalendarStrategy {
     let endDate = this._chooseEndDate
     if (startDate != null && endDate != null) {
       this.onSelected(startDate.timeStamp, endDate.timeStamp)
+      this.changeTimeLimitIf()
+    }
+  }
+
+  fixStartTime() {
+    return true
+  }
+
+  changeTimeLimitIf() {
+    const timeVm = this._takeReturnTimeVm
+    const interval = CalendarUtil.getTimeInterval()
+    const isEndDate = new Date(this._chooseEndDate.timeStamp).setHours(0, 0, 0, 0) == new Date(this._orderEndTimeStamp).setHours(0, 0, 0, 0)
+    if (isEndDate) {
+      promptAction.showToast({ message: "选择了订单结束日期" })
+      timeVm.endTimeMin = this.startTimeRoundDown(this._orderEndTimeStamp, interval)
+      timeVm.endTimeMax = new Date(this._orderEndTimeStamp).setHours(21, 30, 0)
+    } else {
+      promptAction.showToast({ message: "选择了其他日期" })
+      timeVm.endTimeMin = new Date().setHours(7, 0, 0)
+      timeVm.endTimeMax = new Date().setHours(21, 30, 0)
     }
   }
 
   getStartTimeLimit(): TimeLimit {
     let interval = CalendarUtil.getTimeInterval()
     let startMinLimit = this.startTimeRoundDown(this._orderStartTimeStamp, interval)
-    let startManLimit = this.closeTimeRoundUp(this._orderStartTimeStamp, interval)
-    return { minLimit: startMinLimit, maxLimit: startManLimit, interval: interval }
+    let startMaxLimit = this.closeTimeRoundUp(this._orderStartTimeStamp, interval)
+    return { minLimit: startMinLimit, maxLimit: startMaxLimit, interval: interval }
   }
 
-  getEndTimeLimit(): TimeLimit {
-    let interval = CalendarUtil.getTimeInterval()
-    let endMinLimit = this.startTimeRoundDown(this._orderEndTimeStamp, interval)
-    return { minLimit: endMinLimit, maxLimit: ON_DAY_TIME_STAMP, interval: interval }
+  isChooseOrderEndDate(): boolean {
+    let isEndDate = new Date(this._chooseEndDate.timeStamp).setHours(0, 0, 0, 0) == new Date(this._orderEndTimeStamp).setHours(0, 0, 0, 0)
+    if (isEndDate) {
+      console.log("选择了订单结束日期")
+    }
+    return isEndDate
   }
 }

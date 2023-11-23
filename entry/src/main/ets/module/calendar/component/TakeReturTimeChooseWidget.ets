@@ -1,5 +1,5 @@
 // 当前时区的 1970-01-01T00:00:00 ,用new Date(0)创建出来的是标准UTC时间
-import { CalendarUtil, INIT_TIME_CURRENT_TIME_ZONE } from '../helper/CalendarUtil'
+import { CalendarUtil } from '../helper/CalendarUtil'
 
 
 @Component
@@ -9,18 +9,24 @@ export struct TakeReturnTimeChooseWidget {
   @Link private endHourStamp: number
   @Link @Watch("onTimeVmChanged")
   private takeReturnTimeVm: TakeReturnTimeViewModel
-  private readonly _startTimeList: string[] = []
-  private readonly _EndTimeList: string[] = []
+  @State private readonly _startTimeList: string[] = []
+  @State private readonly _EndTimeList: string[] = []
 
   fillTimeList(start: boolean, min: number, max: number, interval: number) {
+    let list = start ? this._startTimeList : this._EndTimeList
+    list.splice(0)
+    if (min >= max) {
+      const tmpDate = new Date(min)
+      let hour = String(tmpDate.getHours()).padStart(2, '0')
+      let minute = String(tmpDate.getMinutes()).padStart(2, '0')
+      list.push(`${hour}:${minute}`)
+      return
+    }
     for (let i = min; i < max; i += interval) {
-      let hour = String(Math.floor(i / 3600_000)).padStart(2, '0')
-      let minute = String(i % 3600_000 / 60_000).padStart(2, '0')
-      if (start) {
-        this._startTimeList.push(`${hour}:${minute}`)
-      } else {
-        this._EndTimeList.push(`${hour}:${minute}`)
-      }
+      const tmpDate = new Date(i)
+      let hour = String(tmpDate.getHours()).padStart(2, '0')
+      let minute = String(tmpDate.getMinutes()).padStart(2, '0')
+      list.push(`${hour}:${minute}`)
     }
   }
 
@@ -30,12 +36,16 @@ export struct TakeReturnTimeChooseWidget {
 
   onTimeVmChanged() {
     let timeVm = this.takeReturnTimeVm
+    console.log("------onTimeVmChanged start-----")
+    this.logTimeStamp("最早取车时间:", timeVm.startTimeMin)
+    this.logTimeStamp("最晚取车时间:", timeVm.startTimeMax)
+    this.logTimeStamp("最早还车时间:", timeVm.endTimeMin)
+    this.logTimeStamp("最晚还车时间:", timeVm.endTimeMax)
+    this.log("_startTimeList:" + this._startTimeList)
+    this.log("_EndTimeList:" + this._EndTimeList)
+    console.log("------onTimeVmChanged end-----")
     this.fillTimeList(true, timeVm.startTimeMin, timeVm.startTimeMax, timeVm.startTimeInterval)
     this.fillTimeList(false, timeVm.endTimeMin, timeVm.endTimeMax, timeVm.endTimeInterval)
-    this.logTimeStamp("取车最早时间:", timeVm.startTimeMin)
-    this.logTimeStamp("取车最晚时间:", timeVm.startTimeMax)
-    this.logTimeStamp("还车最晚时间:", timeVm.endTimeMin)
-    this.logTimeStamp("还车最晚时间:", timeVm.endTimeMax)
   }
 
   build() {
@@ -44,10 +54,11 @@ export struct TakeReturnTimeChooseWidget {
         Text("取车时间").fontWeight(FontWeight.Bold)
           .padding({ top: 10, bottom: 10 })
         TextPicker({
-          range: this.takeReturnTimeVm.fixStartTime ? [this.parseHourStamp(this.startHourStamp)] : this._startTimeList
+          range: this._startTimeList
         })
           .height(120)
           .onChange((value: string, index: number) => {
+            console.log("取车TextPicker滑动导致startHourStamp改变")
             let tmpDate = new Date(`1970/01/01 ${value}:00.000Z`)
             this.startHourStamp = tmpDate.getTime()
           })
@@ -69,23 +80,32 @@ export struct TakeReturnTimeChooseWidget {
   }
 
   parseHourStamp(hourStamp: number): string {
-    let tmpDate = new Date(INIT_TIME_CURRENT_TIME_ZONE.getTime() + hourStamp)
+    let tmpDate = new Date(hourStamp)
     const hour = String(tmpDate.getHours()).padStart(2, '0')
     const minute = String(tmpDate.getMinutes()).padStart(2, '0')
     return `${hour}:${minute}`
   }
 
   logTimeStamp(msg: string, timeStamp: number) {
-    console.log(`TakeReturnTimeChooseWidget: ${msg} ${new Date(timeStamp)}`)
+    this.log(`${msg},${timeStamp}, ${new Date(timeStamp)}`)
+  }
+
+  log(msg: String) {
+    console.log(`TakeReturnTimeChooseWidget: ${msg}`)
   }
 }
 
+const ONE_DAY_STAMP = 24 * 60 * 60 * 1000
+
 export class TakeReturnTimeViewModel {
-  fixStartTime: boolean = false
-  startTimeMin: number = 0
-  startTimeMax: number = 24 * 60 * 60 * 1000
-  endTimeMin: number = 0
-  endTimeMax: number = 24 * 60 * 60 * 1000
-  startTimeInterval: number = CalendarUtil.getTimeInterval()
-  endTimeInterval: number = CalendarUtil.getTimeInterval()
+  constructor(
+    public fixStartTime: boolean = false,
+    public startTimeMin: number = 0,
+    public startTimeMax: number = ONE_DAY_STAMP,
+    public endTimeMin: number = 0,
+    public endTimeMax: number = ONE_DAY_STAMP,
+    public startTimeInterval: number = CalendarUtil.getTimeInterval(),
+    public endTimeInterval: number = CalendarUtil.getTimeInterval(),
+  ) {
+  }
 }

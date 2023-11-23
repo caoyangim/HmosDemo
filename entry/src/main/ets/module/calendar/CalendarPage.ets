@@ -57,21 +57,8 @@ struct CalendarPage {
   }
 
   changeTimeViewModel() {
-    let timeVm = this.takeReturnTimeVm
-    let fixStartTime = this.currentStrategy instanceof ExtendStrategy
-    timeVm.fixStartTime = fixStartTime
-    if (fixStartTime) {
-      promptAction.showToast({ message: "当前是续租模式，将固定开始时间。" })
-    }
-    let startTimeLimit = this.currentStrategy.getStartTimeLimit()
-    timeVm.startTimeMin = startTimeLimit.minLimit
-    timeVm.startTimeMax = startTimeLimit.maxLimit
-    timeVm.startTimeInterval = startTimeLimit.interval
-
-    let endTimeLimit = this.currentStrategy.getEndTimeLimit()
-    timeVm.endTimeMin = endTimeLimit.minLimit
-    timeVm.endTimeMax = endTimeLimit.maxLimit
-    timeVm.endTimeInterval = endTimeLimit.interval
+    console.log("takeReturnTimeVm即将变化，马上刷新TakeReturnTimeWidget")
+    this.takeReturnTimeVm = this.currentStrategy.getTakeReturnTimeVm()
   }
 
   logDateData() {
@@ -87,6 +74,7 @@ struct CalendarPage {
     let endDateStamp = this.endDateStamp
     this.startTimeStamp = startDateStamp > 0 ? startDateStamp + this.startHourStamp : 0
     this.endTimeStamp = endDateStamp > 0 ? endDateStamp + this.endHourStamp : 0
+    console.log("监听到取/还车时间改变")
   }
 
   build() {

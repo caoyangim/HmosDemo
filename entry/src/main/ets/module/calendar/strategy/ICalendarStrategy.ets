@@ -1,6 +1,6 @@
 import { CalendarDateViewModel, CalendarMonthEntity } from '../viewmodel/CalendarEntity';
-import LinkedList from '@ohos.util.LinkedList';
-import { CalendarUtil, ON_DAY_TIME_STAMP } from '../helper/CalendarUtil';
+import { CalendarUtil } from '../helper/CalendarUtil';
+import { TakeReturnTimeViewModel } from '../component/TakeReturTimeChooseWidget';
 
 interface ICalendarStrategy {
 
@@ -8,15 +8,14 @@ interface ICalendarStrategy {
 
   choose(date: CalendarDateViewModel)
 
-  getStartTimeLimit(): TimeLimit
-
-  getEndTimeLimit(): TimeLimit
+  getTakeReturnTimeVm(): TakeReturnTimeViewModel
 }
 
 export abstract class BaseCalendarStrategy implements ICalendarStrategy {
   protected _monthList: Array<CalendarMonthEntity>
   protected _dateList: Array<CalendarDateViewModel>
   private _onSelectedEvent: (startTime: number, endTime: number) => void
+  protected  _takeReturnTimeVm: TakeReturnTimeViewModel = new TakeReturnTimeViewModel()
 
   constructor() {
     this._monthList = this.createCalendarData()
@@ -26,6 +25,24 @@ export abstract class BaseCalendarStrategy implements ICalendarStrategy {
         this._dateList.push(dateEntity)
       })
     })
+    this.initTimeVm()
+  }
+
+  private initTimeVm() {
+    let startTimeLimit = this.getStartTimeLimit()
+    let startTimeMin = startTimeLimit.minLimit
+    let startTimeMax = startTimeLimit.maxLimit
+    let startTimeInterval = startTimeLimit.interval
+    let endTimeLimit = this.getEndTimeLimit()
+    let endTimeMin = endTimeLimit.minLimit
+    let endTimeMax = endTimeLimit.maxLimit
+    let endTimeInterval = endTimeLimit.interval
+    this._takeReturnTimeVm = new TakeReturnTimeViewModel(this.fixStartTime(), startTimeMin, startTimeMax, endTimeMin, endTimeMax,
+      startTimeInterval, endTimeInterval)
+  }
+
+  fixStartTime(): boolean {
+    return false
   }
 
   abstract createCalendarData(): Array<CalendarMonthEntity>
@@ -60,29 +77,41 @@ export abstract class BaseCalendarStrategy implements ICalendarStrategy {
     listener.call(listener, startTime, endTime)
   }
 
+  getTakeReturnTimeVm(): TakeReturnTimeViewModel {
+    return this._takeReturnTimeVm
+  }
+
   getStartTimeLimit(): TimeLimit {
-    return { minLimit: 0, maxLimit: ON_DAY_TIME_STAMP, interval: CalendarUtil.getTimeInterval() }
+    return {
+      minLimit: new Date().setHours(8, 0, 0),
+      maxLimit: new Date().setHours(17, 30, 0),
+      interval: CalendarUtil.getTimeInterval()
+    }
   }
 
   getEndTimeLimit(): TimeLimit {
-    return { minLimit: 0, maxLimit: ON_DAY_TIME_STAMP, interval: CalendarUtil.getTimeInterval() }
+    return {
+      minLimit: new Date().setHours(8, 0, 0),
+      maxLimit: new Date().setHours(17, 30, 0),
+      interval: CalendarUtil.getTimeInterval()
+    }
   }
 
   /**
    * 起始时间向下取整
    */
   startTimeRoundDown(timeStamp: number, timeInterval: number): number {
-    if (timeStamp % timeInterval == 0) {
-      return timeStamp;
-    }
-    return (timeStamp + timeInterval) / timeInterval * timeInterval;
+    return Math.floor(timeStamp / timeInterval) * timeInterval;
   }
 
   /**
    * 结束时间向上取整
    */
   closeTimeRoundUp(timeStamp: number, timeInterval: number): number {
-    return timeStamp / timeInterval * timeInterval;
+    if (timeStamp % timeInterval == 0) {
+      return timeStamp;
+    }
+    return Math.floor((timeStamp + timeInterval) / timeInterval) * timeInterval;
   }
 }
 
